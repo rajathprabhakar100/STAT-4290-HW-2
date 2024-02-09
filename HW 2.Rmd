@@ -1,0 +1,156 @@
+---
+title: "HW2"
+author: "Rajath Prabhakar"
+date: "2024-02-02"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+Question 1
+
+*1*
+
+```{r}
+nutrient <- read.table("nutrient.txt") %>% 
+  rename(Observation = V1,
+         Calcium = V2,
+         Iron = V3, 
+         Protein = V4, 
+         VitaminA = V5, 
+         VitaminC = V6)
+```
+
+```{r}
+nutrient_summary <- nutrient %>% 
+  summarize(Calcium_mean = mean(Calcium),
+            Calcium_sd = sd(Calcium),
+            Iron_mean = mean(Iron),
+            Iron_sd = sd(Iron),
+            Protein_mean = mean(Protein),
+            Protein_sd = sd(Protein),
+            VitaminA_mean = mean(VitaminA),
+            VitaminA_sd = sd(VitaminA),
+            VitaminC_mean = mean(VitaminC),
+            VitaminC_sd = sd(VitaminC)) #%>% 
+nutrient_summary_mean <- nutrient_summary %>% pivot_longer(cols = ends_with("_mean"), names_to = "Mean")
+nutrient_summary_sd <- nutrient_summary %>% pivot_longer(cols = ends_with("_sd"), names_to = "SD")
+```
+
+*2*
+
+Calcium
+H0: Mean(Calcium) = 1000 
+Ha: Mean(Calcium) < 1000
+
+Iron
+H0: Mean(Iron) = 15
+Ha: Mean(Iron) < 15
+
+Protein
+H0: Mean(Protein) = 60
+Ha: Mean(Protein) < 60
+
+VitA
+H0: Mean(VitA) = 800
+Ha: Mean(VitA) < 800
+
+VitC
+H0: Mean(VitC) = 75
+Ha: Mean(VitC) < 75
+
+```{r}
+t_test_calcium <- t.test(nutrient$Calcium, alternative = "less",mu = 1000)$p.value
+t_test_iron <- t.test(nutrient$Iron, alternative = "less", mu = 15)$p.value
+t_test_protein <- t.test(nutrient$Protein, alternative = "less", mu = 60)$p.value
+t_test_VitA <- t.test(nutrient$VitaminA, alternative = "less", mu = 800)$p.value
+t_test_VitC <- t.test(nutrient$VitaminC, alternative = "less", mu = 75)$p.value
+p_value_table <- rbind(t_test_calcium, t_test_iron, t_test_protein, t_test_VitA, t_test_VitC)
+p_value_table
+```
+
+*3*
+
+For calcium and iron, there is sufficient evidence to reject the null hypotheses. US women do not meet the required amounts of calcium and iron. Their p-values, respectively, are 1.05e-104 and 3.33e-58. For protein, Vitamin A, and Vitamin C, there is insufficient evidence that US women fail to meet the required amounts for those nutrients. I would recommend that US women eat more foods that are rich in iron and calcium. 
+
+Problem 2
+
+a)
+
+```{r}
+multiple <-  read.table("multiple.txt")
+```
+
+```{r}
+n = nrow(multiple)
+p = ncol(multiple)
+```
+
+```{r}
+alpha = 0.1
+```
+
+```{r}
+mu_true <- c(rep(2,10), rep(0, 40))
+mu_0 <- c(rep(0, 50))
+```
+
+```{r}
+x_bar <- apply(multiple, 2, mean)
+s2 <- apply(multiple,2,sd)
+```
+
+H0: M1 = M2 = ... = M50 = 0
+Ha: At least one of these means does not equal 0
+
+```{r}
+tstat <- (x_bar - mu_0)/(s2/sqrt(n))
+p_value <- 2*pnorm(-abs(tstat))
+results_table <- as.data.frame(cbind(x_bar, p_value, mu_0, mu_true))
+results_table <- results_table %>% 
+  mutate(decision = case_when(
+    p_value < 0.1 ~ "Reject",
+    p_value >= 0.1 ~ "Fail to Reject"
+  ))
+results_table
+```
+
+b)
+
+Type 1 error: concluding Mu != 0, but true means all equal 0 (rejecting H0 but H0 is true)
+Type 2 error: concluding mu = 0, but mu != 0 (failing to reject H0 but H0 is false)
+
+```{r}
+results_table1 <- results_table %>% 
+  mutate(error = case_when(
+    mu_true == 2 & decision == "Reject" ~ "Rejected Correctly",
+    mu_true == 2 & decision == "Fail to Reject" ~ "Type II Error",
+    mu_true == 0 & decision == "Fail to Reject" ~ "Failed to Reject Correctly",
+    mu_true == 0 & decision == "Reject" ~ "Type I Error"
+  )) %>% 
+  group_by(error) %>% 
+  summarize(amount = n())
+results_table1
+
+```
+Type 1 errors = 4, Type II errors = 0
+Benjamin Hochberg Procedure
+
+```{r}
+xbar <- apply(multiple, 2, mean)
+s <- apply(multiple, 2, sd)
+```
+
+```{r}
+tstatistic <- xbar/(s/sqrt(100))
+```
+
+```{r}
+p_value = 2*pnorm(-abs(tstatistic))
+p_sort = data.frame("index"=1:50, "pvalue" = p_value)
+p_sort <- p_sort %>% 
+  arrange(pvalue)
+p_sort
+```
+
